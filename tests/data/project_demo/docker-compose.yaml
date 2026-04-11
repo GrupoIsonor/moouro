@@ -1,4 +1,9 @@
 services:
+  ntfy:
+    image: docker.io/binwiederhier/ntfy:latest
+    command: serve
+    hostname: ntfy
+
   db:
     image: localhost/test:docker-moouro-${PYTEST_PG_VERSION:-9.3}
     pull_policy: never
@@ -7,6 +12,8 @@ services:
     shm_size: 128mb
     user: postgres
     stop_grace_period: 300s  # psql 9.3 needs a lot of time to shutdown
+    depends_on:
+      - ntfy
     environment:
       POSTGRES_DB: odoodb
       POSTGRES_PASSWORD: odoo

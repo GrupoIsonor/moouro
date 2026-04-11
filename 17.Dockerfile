@@ -1,6 +1,6 @@
 FROM docker.io/library/postgres:17-alpine AS pgvector-builder
 
-SHELL ["/bin/sh", "-e", "-c"]
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 RUN apk add --no-cache git build-base clang19 llvm19 llvm19-linker-tools llvm19-dev
 
@@ -14,7 +14,7 @@ RUN git clone --branch v0.8.2 https://github.com/pgvector/pgvector.git && \
 
 FROM docker.io/library/postgres:17-alpine AS runtime
 
-SHELL ["/bin/sh", "-e", "-c"]
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/lib/postgresql/bitcode/vector.index.bc /usr/local/lib/postgresql/bitcode/vector.index.bc
 COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/lib/postgresql/vector.so /usr/local/lib/postgresql/vector.so

@@ -119,6 +119,7 @@ def _podman_build(
         print(e.output if e.output else "No detailed output.")
         raise
 
+
 def _get_preferred_client_type():
     if shutil.which("podman"):
         return "podman"
@@ -143,6 +144,7 @@ def wait_for_odoo(ip_address, port):
     else:
         raise TimeoutError("Odoo did not start on time")
 
+
 def project_compose_up(client_type, docker):
     if client_type == "podman":
         subprocess.Popen(
@@ -155,6 +157,7 @@ def project_compose_up(client_type, docker):
             detach=True,
             remove_orphans=True,
         )
+
 
 def pytest_addoption(parser):
     parser.addoption("--no-cache", action="store_true", default=False)
@@ -190,16 +193,20 @@ def docker_env(env_info):
     pg_ver = env_info["options"]["pg_version"]
     os.environ["PYTEST_ODOO_VERSION"] = odoo_ver
     os.environ["PYTEST_PG_VERSION"] = pg_ver
-    os.environ["PYTEST_PG_DATA"] = f"/var/lib/postgresql/{pg_ver}/docker" if float(pg_ver) >= 18 else "/var/lib/postgresql/data"
-    os.environ["PYTEST_PG_CONFIG"] = PG_CONFIGS[pg_ver] 
+    os.environ["PYTEST_PG_DATA"] = (
+        f"/var/lib/postgresql/{pg_ver}/docker"
+        if float(pg_ver) >= 18
+        else "/var/lib/postgresql/data"
+    )
+    os.environ["PYTEST_PG_CONFIG"] = PG_CONFIGS[pg_ver]
     client_type = env_info["client_type"]
     client_call = [client_type]
     dockerfile = f"{pg_ver}.Dockerfile"
 
     # Generate pgBackRest Configuration
-    with open('./tests/data/project_demo/config/pgbackrest.conf.tmpl') as f:
+    with open("./tests/data/project_demo/config/pgbackrest.conf.tmpl") as f:
         pgbakcrest_content = os.path.expandvars(f.read())
-    with open('./tests/data/project_demo/config/pgbackrest.conf', 'w') as f:
+    with open("./tests/data/project_demo/config/pgbackrest.conf", "w") as f:
         f.write(pgbakcrest_content)
 
     # Moouro Base
@@ -309,19 +316,17 @@ def docker_env(env_info):
     finally:
         docker.compose.down(remove_orphans=True, volumes=True)
 
+
 @pytest.fixture(scope="session")
 def exec_docker_db(docker_env, env_info):
     def _run(args: list[str]) -> str:
         cmd = " ".join(args)
         if env_info["client_type"] == "podman":
             return _podman_raw(["exec", "db", "sh", "-c", cmd])
-        return docker_env.compose.execute(
-            "db", 
-            ["sh", "-c", cmd], 
-            tty=False
-        )
+        return docker_env.compose.execute("db", ["sh", "-c", cmd], tty=False)
 
     return _run
+
 
 @pytest.fixture(scope="session")
 def run_docker_db(docker_env, env_info):
@@ -330,27 +335,22 @@ def run_docker_db(docker_env, env_info):
         if env_info["client_type"] == "podman":
             return _podman_raw(["run", "--rm", "db", "sh", "-c", cmd])
         return docker_env.compose.run(
-            "db",
-            command=["sh", "-c", cmd],
-            rm=True,
-            entrypoint="",
-            tty=False
+            "db", command=["sh", "-c", cmd], rm=True, entrypoint="", tty=False
         )
 
     return _run
+
 
 @pytest.fixture(scope="session")
 def run_docker_db_no_entrypoint(docker_env, env_info):
     def _run(args):
         cmd = " ".join(args)
         if env_info["client_type"] == "podman":
-            return _podman_raw(["run", "--rm", "--entrypoint", "/bin/sh", "db", "-c", cmd])
+            return _podman_raw(
+                ["run", "--rm", "--entrypoint", "/bin/sh", "db", "-c", cmd]
+            )
         return docker_env.compose.run(
-            "db",
-            command=["-c", cmd],
-            rm=True,
-            entrypoint="/bin/sh",
-            tty=False
+            "db", command=["-c", cmd], rm=True, entrypoint="/bin/sh", tty=False
         )
 
     return _run

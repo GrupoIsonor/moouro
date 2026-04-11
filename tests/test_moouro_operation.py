@@ -12,12 +12,16 @@ class TestMoouroOperation:
         + "EQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg=="
     )
 
-    def test_operation(self, docker_env, env_info, exec_docker_db, run_docker_db_no_entrypoint):
-        common_url = f"http://{env_info['ip']}:{env_info['ports']['odoo']}/xmlrpc/common"
+    def test_operation(
+        self, docker_env, env_info, exec_docker_db, run_docker_db_no_entrypoint
+    ):
+        common_url = (
+            f"http://{env_info['ip']}:{env_info['ports']['odoo']}/xmlrpc/common"
+        )
         sock_url = f"http://{env_info['ip']}:{env_info['ports']['odoo']}/xmlrpc/object"
-        db = 'odoodb'
-        username = 'admin'
-        password = 'admin'
+        db = "odoodb"
+        username = "admin"
+        password = "admin"
         odoo_ver = env_info["options"]["odoo_version"]
         image_field = "image" if float(odoo_ver) < 13 else "image_1920"
 
@@ -26,35 +30,66 @@ class TestMoouroOperation:
         sock = xmlrpclib.ServerProxy(sock_url)
 
         # Create Records
-        partner_a = sock.execute(db, uid, password, 'res.partner', 'create', {
-            'name': 'Partner A',
-            image_field: self.IMG_GREEN,
-        })
+        partner_a = sock.execute(
+            db,
+            uid,
+            password,
+            "res.partner",
+            "create",
+            {
+                "name": "Partner A",
+                image_field: self.IMG_GREEN,
+            },
+        )
         assert partner_a > 0
-        partner_b = sock.execute(db, uid, password, 'res.partner', 'create', {
-            'name': 'Partner B',
-        })
+        partner_b = sock.execute(
+            db,
+            uid,
+            password,
+            "res.partner",
+            "create",
+            {
+                "name": "Partner B",
+            },
+        )
         assert partner_b > 0
 
         # Launch Backup
         output = exec_docker_db(["moouro_backup"])
-        assert "backup command end: completed successfully" in output.lower() and re.search(r'snapshot\s+\w+\s+saved', output.lower())
+        assert (
+            "backup command end: completed successfully" in output.lower()
+            and re.search(r"snapshot\s+\w+\s+saved", output.lower())
+        )
 
         # Get Backup Info
         info = exec_docker_db(["pgbackrest", "--stanza=main", "info", "--output=json"])
         backups = json.loads(info)
-        first_backup_set = backups[0]['backup'][0]['label'] if isinstance(backups, list) else backups['backup'][0]['label']
+        first_backup_set = (
+            backups[0]["backup"][0]["label"]
+            if isinstance(backups, list)
+            else backups["backup"][0]["label"]
+        )
         assert first_backup_set
 
         # Write Record B
-        result = sock.execute(db, uid, password, 'res.partner', 'write', [partner_b], {'name': 'Partner B MOD', image_field: self.IMG_GREEN})
+        result = sock.execute(
+            db,
+            uid,
+            password,
+            "res.partner",
+            "write",
+            [partner_b],
+            {"name": "Partner B MOD", image_field: self.IMG_GREEN},
+        )
         assert result is True
 
         # Down All
         docker_env.compose.down(remove_orphans=True)
 
         # Launch Restore
-        output = run_docker_db_no_entrypoint(["moouro_restore", "/var/lib/odoo/data", first_backup_set])
+        output = run_docker_db_no_entrypoint(
+            ["moouro_restore", "/var/lib/odoo/data", first_backup_set]
+        )
         assert "restore command end: completed successfully" in output.lower()
 
         # Up Services
@@ -62,11 +97,15 @@ class TestMoouroOperation:
         wait_for_odoo(env_info["ip"], env_info["ports"]["odoo"])
 
         # Check Record A
-        result = sock.execute(db, uid, password, 'res.partner', 'read', [partner_a], [image_field, 'name'])
-        assert result[0]['name'] == 'Partner A'
+        result = sock.execute(
+            db, uid, password, "res.partner", "read", [partner_a], [image_field, "name"]
+        )
+        assert result[0]["name"] == "Partner A"
         assert result[0][image_field] == self.IMG_GREEN
 
         # Check Record B
-        result = sock.execute(db, uid, password, 'res.partner', 'read', [partner_b], [image_field, 'name'])
-        assert result[0]['name'] == 'Partner B'
+        result = sock.execute(
+            db, uid, password, "res.partner", "read", [partner_b], [image_field, "name"]
+        )
+        assert result[0]["name"] == "Partner B"
         assert not result[0][image_field]

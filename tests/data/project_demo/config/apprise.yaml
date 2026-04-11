@@ -12,5 +12,4 @@ asset:
   theme: default
 
 urls:
-  - json://localhost:
-      tag: moouro
+  - ntfy://ntfy/moouro:

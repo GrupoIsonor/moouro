@@ -8,8 +8,10 @@
 import subprocess
 import sys
 
+
 def notify(title, body):
     subprocess.run(["apprise", "-t", title, "-b", body], check=False)
+
 
 notify_mode = "--notify" in sys.argv
 log = []
@@ -19,20 +21,24 @@ try:
 
     # pgbackrest check
     log.append("Running pgbackrest check...")
-    p1 = subprocess.run(["pgbackrest", "--stanza=main", "check"],
-                        stdout=subprocess.PIPE, 
-                        stderr=subprocess.PIPE, 
-                        universal_newlines=True,
-                        check=False)
+    p1 = subprocess.run(
+        ["pgbackrest", "--stanza=main", "check"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        check=False,
+    )
     log.append(p1.stdout.strip() or "No output")
 
     # resticprofile check
     log.append("Running resticprofile check...")
-    p2 = subprocess.run(["resticprofile", "check"],
-                        stdout=subprocess.PIPE, 
-                        stderr=subprocess.PIPE, 
-                        universal_newlines=True,
-                        check=False)
+    p2 = subprocess.run(
+        ["resticprofile", "check"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        check=False,
+    )
     log.append(p2.stdout.strip() or "No output")
 
     output = "\n".join(log)

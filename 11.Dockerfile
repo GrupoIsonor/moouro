@@ -1,6 +1,6 @@
 FROM docker.io/library/postgres:11-alpine AS runtime
 
-SHELL ["/bin/sh", "-e", "-c"]
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 RUN apk add --no-cache pgbackrest restic rclone python3 apprise && \
     apk add --no-cache --virtual .build-deps curl && \

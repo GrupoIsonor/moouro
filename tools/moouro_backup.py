@@ -11,8 +11,10 @@
 import subprocess
 import sys
 
+
 def notify(title, body):
     subprocess.run(["apprise", "-t", title, "-b", body], check=False)
+
 
 backup_type = "full"
 dry_run = False
@@ -41,11 +43,13 @@ try:
     pg_cmd = ["pgbackrest", "--stanza=main", "backup", f"--type={backup_type}"]
     if dry_run:
         pg_cmd.append("--dry-run")
-    p1 = subprocess.run(pg_cmd, 
-        stdout=subprocess.PIPE, 
-        stderr=subprocess.PIPE, 
+    p1 = subprocess.run(
+        pg_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         universal_newlines=True,
-        check=False)
+        check=False,
+    )
     log.append(p1.stdout.strip() or "No output")
     if p1.stderr:
         log.append("pgbackrest stderr: " + p1.stderr.strip())
@@ -58,11 +62,13 @@ try:
     if dry_run:
         rs_cmd.append("--dry-run")
 
-    p2 = subprocess.run(rs_cmd, 
-        stdout=subprocess.PIPE, 
-        stderr=subprocess.PIPE, 
+    p2 = subprocess.run(
+        rs_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         universal_newlines=True,
-        check=False)
+        check=False,
+    )
     log.append(p2.stdout.strip() or "No output")
     if p2.stderr:
         log.append("restic stderr: " + p2.stderr.strip())

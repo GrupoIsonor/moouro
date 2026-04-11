@@ -1,6 +1,6 @@
 FROM docker.io/library/postgres:9.3-alpine AS builder
 
-SHELL ["/bin/sh", "-e", "-c"]
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 ARG TARGETARCH \
     GO_VERSION="1.26.1" \
@@ -18,7 +18,7 @@ RUN apk add --no-cache --virtual .build-deps \
 WORKDIR /tmp
 
 # Install Go
-RUN wget -qO go.tar.gz https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz && \
+RUN wget -qO go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
 
@@ -31,7 +31,7 @@ RUN git clone --depth 1 https://github.com/rclone/rclone && \
     cd rclone && go build -o /builds/rclone && rm -rf /tmp/rclone
 
 # Build pgBackRest
-RUN git clone -b release/${PG_BACKREST_VERSION} --depth 1 https://github.com/pgbackrest/pgbackrest && \
+RUN git clone -b "release/${PG_BACKREST_VERSION}" --depth 1 https://github.com/pgbackrest/pgbackrest && \
     cd pgbackrest/src && ./configure && make && mv pgbackrest /builds/ && rm -rf /tmp/pgbackrest
 
 # Build unaccent extension
@@ -44,7 +44,7 @@ RUN wget -qO postgresql.tar.bz2 https://ftp.postgresql.org/pub/source/v9.3.25/po
 ### RUNTIME ###
 FROM docker.io/library/postgres:9.3-alpine
 
-SHELL ["/bin/sh", "-e", "-c"]
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 COPY --from=builder --chown=postgres:postgres /builds/pgbackrest /usr/local/bin/
 COPY --from=builder --chown=postgres:postgres /builds/restic     /usr/local/bin/

@@ -16,8 +16,8 @@ Database and Filestore Backup Management for Odoo environments
 
 ## Features
 
-- unaccent PostgreSQL extensions
-- vector (13+) PostgreSQL extensions
+- unaccent PostgreSQL extension
+- vector (13+) PostgreSQL extension
 - Point-in-Time Recovery (PITR)
 - [pgBackRest](https://pgbackrest.org/) – PostgreSQL backups
 - [restic](https://github.com/restic/restic) – Filestore backups
@@ -26,6 +26,12 @@ Database and Filestore Backup Management for Odoo environments
 - [apprise](https://github.com/caronc/apprise) – Push notifications
 
 ## Documentation
+
+- pgBackRest: https://pgbackrest.org/configuration.html
+- ResticProfile: https://creativeprojects.github.io/resticprofile/configuration/getting_started/index.html
+- AppRise: https://appriseit.com/getting-started/configuration
+
+You can also get inspiration from the configurations used in the tests: https://github.com/GrupoIsonor/moouro/tree/master/tests/data/project_demo/config
 
 ### Database Backup (pgBackRest)
 
@@ -133,10 +139,10 @@ services:
       POSTGRES_USER: odoo
       POSTGRES_INITDB_ARGS: --locale=C --encoding=UTF8
     volumes:
-      - ./config/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:z
-      - ./config/$PYTEST_PG_CONFIG:/etc/postgresql/postgresql.conf:z
-      - ./config/resticprofile.yaml:/etc/resticprofile/profiles.yaml:z
-      - ./config/apprise.yaml:/etc/apprise/apprise.yaml:z
+      - ./pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:z
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:z
+      - ./resticprofile.yaml:/etc/resticprofile/profiles.yaml:z
+      - ./apprise.yaml:/etc/apprise/apprise.yaml:z
       - filestore:/var/lib/odoo/data
       - db:/var/lib/postgresql/18/docker
     secrets:
