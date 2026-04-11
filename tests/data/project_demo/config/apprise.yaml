@@ -1,0 +1,16 @@
+version: 1
+
+asset:
+  app_id: Moouro
+  app_desc: Moouro Notifications
+  app_url: https://github.com/GrupoIsonor/moouro
+
+  async_mode: true
+  interpret_escapes: false
+  secure_logging: true
+  encoding: utf-8
+  theme: default
+
+urls:
+  - json://localhost:
+      tag: moouro

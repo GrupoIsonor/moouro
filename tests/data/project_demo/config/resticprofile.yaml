@@ -1,0 +1,10 @@
+version: "1"
+
+default:
+  repository: "local:/var/lib/restic"
+  password-file: "/run/secrets/restic_password"
+
+  backup:
+    verbose: true
+    source:
+      - "/var/lib/odoo/data"
