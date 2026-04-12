@@ -64,12 +64,12 @@ class TestMoouroOperation:
         # Get Backup Info
         info = exec_docker_db(["pgbackrest", "--stanza=main", "info", "--output=json"])
         backups = json.loads(info)
-        first_backup_set = (
-            backups[0]["backup"][0]["label"]
+        latest_backup_set = (
+            backups[0]["backup"][-1]["label"]
             if isinstance(backups, list)
-            else backups["backup"][0]["label"]
+            else backups["backup"][-1]["label"]
         )
-        assert first_backup_set
+        assert latest_backup_set.endswith("F")
 
         # Write Record B
         result = sock.execute(
@@ -86,10 +86,8 @@ class TestMoouroOperation:
         # Down All
         docker_env.compose.down(remove_orphans=True)
 
-        # Launch Restore
-        output = run_docker_db_no_entrypoint(
-            ["moouro_restore", "/var/lib/odoo/data", first_backup_set]
-        )
+        # Launch Restore (latest state without WAL)
+        output = run_docker_db_no_entrypoint(["moouro_restore", "/var/lib/odoo/data"])
         assert "restore command end: completed successfully" in output.lower()
 
         # Up Services
