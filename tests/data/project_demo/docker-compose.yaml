@@ -47,7 +47,7 @@ services:
       - restic:/var/lib/restic
       - pgbackrest:/var/lib/pgbackrest
       - filestore:/var/lib/odoo/data
-      - db:${PYTEST_PG_DATA:-/var/lib/postgresql/data}
+      - db:${PYTEST_PG_DATA_VOLUME:-/var/lib/postgresql/data}
     secrets:
       - restic_password
     command: postgres -c config_file=/etc/postgresql/postgresql.conf

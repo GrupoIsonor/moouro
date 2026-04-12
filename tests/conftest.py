@@ -9,7 +9,7 @@ from python_on_whales import DockerClient
 
 IMAGE_TAG_NAME = "localhost/test:docker-moouro"
 COMPOSE_PROJECT_NAME = "moouro-test"
-PG_VERSIONS = {
+ODOO_VERSIONS = {
     "9.3": "7.0",
     "9.6": "8.0",
     "10": "13.0",
@@ -173,7 +173,7 @@ def env_info(pytestconfig):
     no_cache = bool(pytestconfig.getoption("no_cache", False))
     pg_ver = pytestconfig.getoption("pg_version")
     client_type = pytestconfig.getoption("client_type") or _get_preferred_client_type()
-    odoo_ver = PG_VERSIONS.get(pg_ver)
+    odoo_ver = ODOO_VERSIONS.get(pg_ver)
 
     return {
         "ip": "127.0.0.1",
@@ -200,6 +200,9 @@ def docker_env(env_info):
         f"/var/lib/postgresql/{pg_ver}/docker"
         if float(pg_ver) >= 18
         else "/var/lib/postgresql/data"
+    )
+    os.environ["PYTEST_PG_DATA_VOLUME"] = (
+        f"/var/lib/postgresql" if float(pg_ver) >= 18 else "/var/lib/postgresql/data"
     )
     os.environ["PYTEST_PG_CONFIG"] = PG_CONFIGS[pg_ver]
     client_type = env_info["client_type"]
@@ -276,8 +279,6 @@ def docker_env(env_info):
     # Initialize Database
     init_params = [
         "odoo",
-        "-c",
-        "/etc/odoo/odoo.conf",
         "-i",
         "base",
         "--stop-after-init",

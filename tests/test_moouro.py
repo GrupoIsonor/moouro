@@ -41,7 +41,7 @@ class TestMoouroContainer:
                 "/tmp/restic_restore",
             ]
         )
-        assert "summary: restored" in output.lower()
+        assert "finished 'restore'" in output.lower()
 
     def test_moouro_check(self, exec_docker_db):
         output = exec_docker_db(["moouro_check"])

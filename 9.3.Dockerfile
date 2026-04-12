@@ -50,9 +50,9 @@ COPY --from=builder --chown=postgres:postgres /builds/pgbackrest /usr/local/bin/
 COPY --from=builder --chown=postgres:postgres /builds/restic     /usr/local/bin/
 COPY --from=builder --chown=postgres:postgres /builds/rclone    /usr/local/bin/
 
-RUN apk add --no-cache libbz2 python3 && \
-    apk add --no-cache --virtual .build-deps curl py3-pip && \
-    pip3 install --no-cache-dir apprise && \
+RUN apk add --no-cache libbz2 python3 py3-pip && \
+    apk add --no-cache --virtual .build-deps curl && \
+    pip3 install --no-cache-dir apprise requests && \
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
     apk del .build-deps && \
     rm -f /sbin/apk && \

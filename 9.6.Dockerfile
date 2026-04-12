@@ -2,9 +2,9 @@ FROM docker.io/library/postgres:9.6-alpine AS runtime
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add --no-cache pgbackrest restic rclone python3 && \
-    apk add --no-cache --virtual .build-deps curl py3-pip && \
-    pip3 install --no-cache-dir apprise && \
+RUN apk add --no-cache pgbackrest restic rclone python3 py3-pip && \
+    apk add --no-cache --virtual .build-deps curl && \
+    pip3 install --no-cache-dir apprise requests && \
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
     apk del .build-deps && \
     rm -f /sbin/apk && \
