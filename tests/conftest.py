@@ -38,17 +38,20 @@ PG_CONFIGS = {
 OLDER_VERSIONS = ("7.0", "8.0")
 
 
-def _podman_raw(command: list[str]) -> str:
-    podman_cmd = ["podman", "compose", "-p", COMPOSE_PROJECT_NAME]
+def _compose_raw(
+    client: str, command: list[str], check: bool = False, stdin: str = None
+) -> str:
+    podman_cmd = [client, "compose", "-p", COMPOSE_PROJECT_NAME]
 
     podman_cmd.extend(command)
 
     result = subprocess.run(
         podman_cmd,
+        input=stdin,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        check=False,
+        check=check,
     )
 
     output = result.stdout
@@ -319,38 +322,31 @@ def docker_env(env_info):
 
 @pytest.fixture(scope="session")
 def exec_docker_db(docker_env, env_info):
-    def _run(args: list[str]) -> str:
-        cmd = " ".join(args)
-        if env_info["client_type"] == "podman":
-            return _podman_raw(["exec", "db", "sh", "-c", cmd])
-        return docker_env.compose.execute("db", ["sh", "-c", cmd], tty=False)
+    def _run(args: list[str], stdin=None) -> str:
+        client_type = env_info["client_type"]
+        return _compose_raw(client_type, ["exec", "db"] + args, stdin=stdin)
 
     return _run
 
 
 @pytest.fixture(scope="session")
 def run_docker_db(docker_env, env_info):
-    def _run(args):
-        cmd = " ".join(args)
-        if env_info["client_type"] == "podman":
-            return _podman_raw(["run", "--rm", "db", "sh", "-c", cmd])
-        return docker_env.compose.run(
-            "db", command=["sh", "-c", cmd], rm=True, entrypoint="", tty=False
-        )
+    def _run(args: list[str], stdin=None):
+        client_type = env_info["client_type"]
+        return _compose_raw(client_type, ["run", "--rm", "db"] + args, stdin=stdin)
 
     return _run
 
 
 @pytest.fixture(scope="session")
 def run_docker_db_no_entrypoint(docker_env, env_info):
-    def _run(args):
-        cmd = " ".join(args)
-        if env_info["client_type"] == "podman":
-            return _podman_raw(
-                ["run", "--rm", "--entrypoint", "/bin/sh", "db", "-c", cmd]
-            )
-        return docker_env.compose.run(
-            "db", command=["-c", cmd], rm=True, entrypoint="/bin/sh", tty=False
+    def _run(args: list[str], stdin=None):
+        args_str = " ".join(args)
+        client_type = env_info["client_type"]
+        return _compose_raw(
+            client_type,
+            ["run", "--rm", "--entrypoint", "/bin/ash", "db", "-c", args_str],
+            stdin=stdin,
         )
 
     return _run

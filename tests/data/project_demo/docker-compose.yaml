@@ -3,6 +3,23 @@ services:
     image: docker.io/binwiederhier/ntfy:latest
     command: serve
     hostname: ntfy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  db-init:
+    image: localhost/test:docker-moouro-${PYTEST_PG_VERSION:-9.3}
+    user: "0:0"
+    entrypoint: ["/bin/ash"]
+    command: ["-c", "chown -R postgres:postgres /var/lib/restic /var/lib/pgbackrest && chmod -R 777 /var/lib/odoo/data"]
+    volumes:
+      - restic:/var/lib/restic
+      - pgbackrest:/var/lib/pgbackrest
+      - filestore:/var/lib/odoo/data
+    restart: "no"
 
   db:
     image: localhost/test:docker-moouro-${PYTEST_PG_VERSION:-9.3}
@@ -13,7 +30,10 @@ services:
     user: postgres
     stop_grace_period: 300s  # psql 9.3 needs a lot of time to shutdown
     depends_on:
-      - ntfy
+      db-init:
+        condition: service_completed_successfully
+      ntfy:
+        condition: service_healthy
     environment:
       POSTGRES_DB: odoodb
       POSTGRES_PASSWORD: odoo
@@ -27,7 +47,7 @@ services:
       - restic:/var/lib/restic
       - pgbackrest:/var/lib/pgbackrest
       - filestore:/var/lib/odoo/data
-      - db:${PYTEST_PG_DATA:-/var/lib/postgresql/data} # moouro-test_db
+      - db:${PYTEST_PG_DATA:-/var/lib/postgresql/data}
     secrets:
       - restic_password
     command: postgres -c config_file=/etc/postgresql/postgresql.conf

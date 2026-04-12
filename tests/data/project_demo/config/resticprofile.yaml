@@ -8,3 +8,5 @@ default:
     verbose: true
     source:
       - "/var/lib/odoo/data"
+    exclude:
+      - "/var/lib/odoo/data/session"

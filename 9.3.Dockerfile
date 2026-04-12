@@ -54,7 +54,9 @@ RUN apk add --no-cache libbz2 python3 && \
     apk add --no-cache --virtual .build-deps curl py3-pip && \
     pip3 install --no-cache-dir apprise && \
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
-    apk del .build-deps
+    apk del .build-deps && \
+    rm -f /sbin/apk && \
+    rm -rf /etc/apk /lib/apk /usr/share/apk /var/cache/apk /var/lib/apk
 
 COPY --from=builder --chown=postgres:postgres /usr/local/lib/postgresql/unaccent.so /usr/local/lib/postgresql/
 COPY --from=builder --chown=postgres:postgres /usr/local/share/postgresql/extension/unaccent* /usr/local/share/postgresql/extension/

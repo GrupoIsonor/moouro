@@ -23,7 +23,9 @@ COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/share/postgres
 RUN apk add --no-cache pgbackrest restic rclone python3 apprise && \
     apk add --no-cache --virtual .build-deps curl && \
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
-    apk del .build-deps
+    apk del .build-deps && \
+    rm -f /sbin/apk && \
+    rm -rf /etc/apk /lib/apk /usr/share/apk /var/cache/apk /var/lib/apk
 
 COPY --chown=postgres:postgres files/init/common/* /docker-entrypoint-initdb.d/
 COPY --chown=postgres:postgres files/init/ai/* /docker-entrypoint-initdb.d/
