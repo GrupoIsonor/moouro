@@ -2,6 +2,7 @@
 import subprocess
 import sys
 
+
 if len(sys.argv) < 2:
     print(
         "Usage: restore.py <target-path> [latest|YYYY-MM-DD|LSN] [latest|snapshot-id] [dry-run]"

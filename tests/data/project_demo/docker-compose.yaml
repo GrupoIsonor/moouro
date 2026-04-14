@@ -12,6 +12,9 @@ services:
 
   db-init:
     image: localhost/test:docker-moouro-${PYTEST_PG_VERSION:-9.3}
+    pull_policy: never
+    tty: false
+    stdin_open: false
     user: "0:0"
     entrypoint: ["/bin/ash"]
     command: ["-c", "chown -R postgres:postgres /var/lib/restic /var/lib/pgbackrest && chmod -R 777 /var/lib/odoo/data"]

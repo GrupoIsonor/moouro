@@ -45,7 +45,7 @@ jobs:
   pytest:
     strategy:
       matrix:
-        pg_version: ["9.3", "9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
+        pg_version: ["9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
       fail-fast: false
     runs-on: ubuntu-24.04
     needs: pre-commit
@@ -101,7 +101,7 @@ jobs:
       LATEST_VERSION: "19.0"
     strategy:
       matrix:
-        version: ["9.3", "9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
+        version: ["9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
         platforms: ["linux/amd64,linux/arm64"]
     steps:
       - name: Checkout
