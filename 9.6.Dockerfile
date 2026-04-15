@@ -10,19 +10,20 @@ RUN apk add --no-cache pgbackrest restic rclone python3 py3-pip && \
     rm -f /sbin/apk && \
     rm -rf /etc/apk /lib/apk /usr/share/apk /var/cache/apk /var/lib/apk
 
+COPY --chown=postgres:postgres moouro-entrypoint.sh /usr/local/bin/moouro-entrypoint
 COPY --chown=postgres:postgres files/init/common/* /docker-entrypoint-initdb.d/
 COPY --chown=postgres:postgres tools/moouro_backup.py /usr/local/sbin/moouro_backup
 COPY --chown=postgres:postgres tools/moouro_restore.py /usr/local/sbin/moouro_restore
 COPY --chown=postgres:postgres tools/moouro_check.py /usr/local/sbin/moouro_check
 COPY --chown=postgres:postgres tools/moouro_list.py /usr/local/sbin/moouro_list
-COPY --chown=postgres:postgres moouro-entrypoint.sh /moouro-entrypoint.sh
 
 RUN mkdir -p /var/log/pgbackrest && \
     chown postgres:postgres /var/log/pgbackrest && \
-    chmod +x /usr/local/sbin/moouro_* /moouro-entrypoint.sh
+    chmod 750 /usr/local/sbin/moouro_* && \
+    chmod +x /usr/local/bin/moouro-entrypoint
 
 # Smoke Tests
 RUN pgbackrest version && restic version && resticprofile version && rclone version && apprise --version
 
-USER postgres
-ENTRYPOINT ["/moouro-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/moouro-entrypoint"]
+CMD ["postgres"]

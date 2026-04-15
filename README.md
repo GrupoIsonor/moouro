@@ -8,7 +8,7 @@
 <p align="center">
 *** PROJECT UNDER DEVELOPMENT. NOT READY FOR PRODUCTION ***
 <p align="center">
-Database and Filestore Backup Management for Odoo environments
+Database and Filestore Management for Odoo environments
 (By Grupo Isonor)
 </p>
 
@@ -53,6 +53,12 @@ The image uses ResticProfile for filestore backups.
 All environment variables supported by the official PostgreSQL Docker image are available:
 [https://hub.docker.com/_/postgres#environment-variables](https://hub.docker.com/_/postgres#environment-variables)
 
+| Name | Description | Required |
+| ---- | ----------- | -------- |
+| POSTGRES_ODOO_USER | The username for odoo user | Yes |
+| POSTGRES_ODOO_PASSWORD | The password for odoo user | Yes |
+| POSTGRES_ODOO_DB | The database for odoo user | No |
+
 ### Points Of Interest
 
 | Path | Description |
@@ -62,7 +68,7 @@ All environment variables supported by the official PostgreSQL Docker image are 
 | /etc/resticprofile/profiles.yaml | ResticProfile configuration |
 | /etc/apprise/apprise.yaml | AppRise configuration |
 
-### Tools
+### Scripts
 
 These scripts are available to help you get started with the tools.
 It is highly recommend that you learn how to use pgBackRest and ResticProfile by consulting their respective documentation.
@@ -112,6 +118,21 @@ It is highly recommend that you learn how to use pgBackRest and ResticProfile by
     moouro_list
   ```
 
+### FAQ
+
+- How to use scripts?
+
+  Example with `docker`:
+  - With psql running:
+    ```docker compose exec moouro_backup full```
+  - Without psql running:
+    ```docker compose run --rm --entrypoint /bin/ash moouro -c 'moouro_restore /var/lib/odoo/data'```
+
+- I've already initialized the database, but I want to add new backup profile. What should I do?
+
+  Simply add the profile to the pgbackrest and resticprofile configuration files. Moouro attempts to initialize the profiles every time it starts up.
+
+
 ---
 <div align="center"><h2>Very Basic Usage Example</h2></div>
 
@@ -136,8 +157,11 @@ services:
     user: postgres
     environment:
       POSTGRES_DB: odoodb
-      POSTGRES_PASSWORD: odoo
-      POSTGRES_USER: odoo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_ODOO_USER: odoo
+      POSTGRES_ODOO_PASSWORD: odoo
+      POSTGRES_ODOO_DB: odoodb
       POSTGRES_INITDB_ARGS: --locale=C --encoding=UTF8
     volumes:
       - ./pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:z
@@ -145,7 +169,7 @@ services:
       - ./resticprofile.yaml:/etc/resticprofile/profiles.yaml:z
       - ./apprise.yaml:/etc/apprise/apprise.yaml:z
       - filestore:/var/lib/odoo/data
-      - db:/var/lib/postgresql/18/docker
+      - db:/var/lib/postgresql
     secrets:
       - restic_password
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
