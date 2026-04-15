@@ -10,7 +10,6 @@ from python_on_whales import DockerClient
 IMAGE_TAG_NAME = "localhost/test:docker-moouro"
 COMPOSE_PROJECT_NAME = "moouro-test"
 ODOO_VERSIONS = {
-    "9.3": "7.0",
     "9.6": "8.0",
     "10": "13.0",
     "11": "13.0",
@@ -23,7 +22,6 @@ ODOO_VERSIONS = {
     "18": "19.0",
 }
 PG_CONFIGS = {
-    "9.3": "9.3.postgresql.conf",
     "9.6": "9.6.postgresql.conf",
     "10": "10.postgresql.conf",
     "11": "10.postgresql.conf",
@@ -35,7 +33,7 @@ PG_CONFIGS = {
     "17": "13.postgresql.conf",
     "18": "13.postgresql.conf",
 }
-OLDER_VERSIONS = ("7.0", "8.0")
+OLDER_VERSIONS = ("8.0",)
 
 
 def _compose_raw(
@@ -146,6 +144,7 @@ def wait_for_odoo(ip_address, port):
         time.sleep(2)
     else:
         raise TimeoutError("Odoo did not start on time")
+    time.sleep(5)  # Wait for pgBackRest and resticprofile
 
 
 def project_compose_up(client_type, docker):
@@ -164,7 +163,7 @@ def project_compose_up(client_type, docker):
 
 def pytest_addoption(parser):
     parser.addoption("--no-cache", action="store_true", default=False)
-    parser.addoption("--pg-version", action="store", default="9.3")
+    parser.addoption("--pg-version", action="store", default="9.6")
     parser.addoption("--client-type", action="store", default=None)
 
 
@@ -276,7 +275,6 @@ def docker_env(env_info):
         compose_project_name=COMPOSE_PROJECT_NAME,
     )
 
-    # Initialize Database
     init_params = [
         "odoo",
         "-i",
@@ -284,69 +282,85 @@ def docker_env(env_info):
         "--stop-after-init",
         "--no-xmlrpc" if odoo_ver in OLDER_VERSIONS else "--no-http",
     ]
-
-    if client_type == "podman":
-        subprocess.run(
-            [
-                "podman",
-                "compose",
-                "-p",
-                COMPOSE_PROJECT_NAME,
-                "run",
-                "--rm",
-                "odoo",
-            ]
-            + init_params,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=60,
-            check=True,
-        )
-    else:
-        docker.compose.run(
-            "odoo",
-            init_params,
-            remove=True,
-        )
-
-    # Up Services
-    print("Waiting Odoo...")
-    project_compose_up(client_type, docker)
-    wait_for_odoo(env_info["ip"], env_info["ports"]["odoo"])
-
     try:
+        # Initialize Database
+        if client_type == "podman":
+            subprocess.run(
+                [
+                    "podman",
+                    "compose",
+                    "-p",
+                    COMPOSE_PROJECT_NAME,
+                    "run",
+                    "--rm",
+                    "odoo",
+                ]
+                + init_params,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=60,
+                check=True,
+            )
+        else:
+            docker.compose.run(
+                "odoo",
+                init_params,
+                remove=True,
+            )
+
+        # Up Services
+        print("Waiting Odoo...")
+        project_compose_up(client_type, docker)
+        wait_for_odoo(env_info["ip"], env_info["ports"]["odoo"])
+
         yield docker
     finally:
+        print("===== DB LOGS")
+        print(docker.compose.logs("db"))
         docker.compose.down(remove_orphans=True, volumes=True)
 
 
 @pytest.fixture(scope="session")
-def exec_docker_db(docker_env, env_info):
+def exec_docker_db(env_info):
     def _run(args: list[str], stdin=None) -> str:
         client_type = env_info["client_type"]
-        return _compose_raw(client_type, ["exec", "db"] + args, stdin=stdin)
+        return _compose_raw(
+            client_type, ["exec", "-u", "postgres", "db"] + args, stdin=stdin
+        )
 
     return _run
 
 
 @pytest.fixture(scope="session")
-def run_docker_db(docker_env, env_info):
+def run_docker_db(env_info):
     def _run(args: list[str], stdin=None):
         client_type = env_info["client_type"]
-        return _compose_raw(client_type, ["run", "--rm", "db"] + args, stdin=stdin)
+        return _compose_raw(
+            client_type, ["run", "--rm", "-u", "postgres", "db"] + args, stdin=stdin
+        )
 
     return _run
 
 
 @pytest.fixture(scope="session")
-def run_docker_db_no_entrypoint(docker_env, env_info):
+def run_docker_db_no_entrypoint(env_info):
     def _run(args: list[str], stdin=None):
         args_str = " ".join(args)
         client_type = env_info["client_type"]
         return _compose_raw(
             client_type,
-            ["run", "--rm", "--entrypoint", "/bin/ash", "db", "-c", args_str],
+            [
+                "run",
+                "--rm",
+                "--entrypoint",
+                "/bin/sh",
+                "-u",
+                "postgres",
+                "db",
+                "-c",
+                args_str,
+            ],
             stdin=stdin,
         )
 

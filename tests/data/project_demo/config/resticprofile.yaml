@@ -9,4 +9,4 @@ default:
     source:
       - "/var/lib/odoo/data"
     exclude:
-      - "/var/lib/odoo/data/session"
+      - "/var/lib/odoo/data/sessions"

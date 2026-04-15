@@ -1,27 +1,29 @@
 #!/bin/sh
 set -e
 
+if command -v gosu >/dev/null 2>&1; then
+    CMD_SU=gosu
+else
+    CMD_SU=su-exec
+fi
+
+# Init resticprofile (background)
 if [ -f /etc/resticprofile/profiles.yaml ]; then
-    # Sub-shell
     (
         echo "[moouro] Init resticprofile..."
-        resticprofile init --all || echo "[!][moouro] Error: resticprofile init has failed, ignoring..."
-        resticprofile check
+        $CMD_SU postgres resticprofile init --all || echo "[!][moouro] Error: resticprofile init has failed, ignoring..."
     ) &
 fi
 
+# Init pgbackrest (background)
 if [ -f /etc/pgbackrest/pgbackrest.conf ]; then
-    # Sub-shell
     (
-        # Wait psql
-        until pg_isready -p 5432 -U ${POSTGRES_USER:-postgres}; do
-        sleep 1
+        until pg_isready -q -p 5432 -U ${POSTGRES_USER:-postgres}; do
+            sleep 1
         done
 
         echo "[moouro] Postgres ready. Init pgBackRest..."
-        # Creamos la stanza solo si no existe
-        pgbackrest --stanza=main stanza-create || echo "[!][moouro] Error: pgbackrest has failed, ignoring..."
-        pgbackrest --stanza=main check
+        $CMD_SU postgres pgbackrest --stanza=main stanza-create || echo "[!][moouro] Error: pgbackrest has failed, ignoring..."
     ) &
 fi
 

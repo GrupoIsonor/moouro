@@ -16,7 +16,7 @@ FROM docker.io/library/postgres:13-alpine AS runtime
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/lib/postgresql/bitcode/vector.index.bc /usr/local/lib/postgresql/bitcode/vector.index.bc
+# COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/lib/postgresql/bitcode/vector.index.bc /usr/local/lib/postgresql/bitcode/vector.index.bc
 COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/lib/postgresql/vector.so /usr/local/lib/postgresql/vector.so
 COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/share/postgresql/extension /usr/local/share/postgresql/extension
 

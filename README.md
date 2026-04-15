@@ -53,11 +53,11 @@ The image uses ResticProfile for filestore backups.
 All environment variables supported by the official PostgreSQL Docker image are available:
 [https://hub.docker.com/_/postgres#environment-variables](https://hub.docker.com/_/postgres#environment-variables)
 
-| Name | Description | Required |
-| ---- | ----------- | -------- |
-| POSTGRES_ODOO_USER | The username for odoo user | Yes |
-| POSTGRES_ODOO_PASSWORD | The password for odoo user | Yes |
-| POSTGRES_ODOO_DB | The database for odoo user | No |
+| Name | Description | Required | Default |
+| ---- | ----------- | -------- | ------- |
+| POSTGRES_ODOO_USER | The username for odoo user | Yes | "" |
+| POSTGRES_ODOO_PASSWORD | The password for odoo user | Yes | "" |
+| POSTGRES_ODOO_DB | The database for odoo user | No | "" |
 
 ### Points Of Interest
 
@@ -124,9 +124,9 @@ It is highly recommend that you learn how to use pgBackRest and ResticProfile by
 
   Example with `docker`:
   - With psql running:
-    ```docker compose exec moouro_backup full```
+    ```docker compose exec -u postgres moouro_backup full```
   - Without psql running:
-    ```docker compose run --rm --entrypoint /bin/ash moouro -c 'moouro_restore /var/lib/odoo/data'```
+    ```docker compose run --rm --entrypoint /bin/sh -u postgres moouro -c 'moouro_restore /var/lib/odoo/data'```
 
 - I've already initialized the database, but I want to add new backup profile. What should I do?
 
@@ -154,7 +154,6 @@ myproject/
 services:
   db:
     image: ghcr.io/grupoisonor/moouro:18
-    user: postgres
     environment:
       POSTGRES_DB: odoodb
       POSTGRES_USER: postgres
@@ -164,10 +163,10 @@ services:
       POSTGRES_ODOO_DB: odoodb
       POSTGRES_INITDB_ARGS: --locale=C --encoding=UTF8
     volumes:
-      - ./pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:z
-      - ./postgresql.conf:/etc/postgresql/postgresql.conf:z
-      - ./resticprofile.yaml:/etc/resticprofile/profiles.yaml:z
-      - ./apprise.yaml:/etc/apprise/apprise.yaml:z
+      - ./pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro,Z
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro,Z
+      - ./resticprofile.yaml:/etc/resticprofile/profiles.yaml:ro,Z
+      - ./apprise.yaml:/etc/apprise/apprise.yaml:ro,Z
       - filestore:/var/lib/odoo/data
       - db:/var/lib/postgresql
     secrets:
@@ -182,9 +181,7 @@ services:
       start_period: 30s
 
   odoo:
-    image: localhost/isodoo:my-custom-image-19
-    pull_policy: never
-    user: odoo
+    image: isodoo:my-custom-image-19
     depends_on:
       db:
         condition: service_healthy
@@ -208,6 +205,7 @@ services:
 
 secrets:
   restic_password:
+    x-podman.relabel: Z
     file: ./secrets/restic_password.txt
 
 volumes:
