@@ -59,6 +59,8 @@ All environment variables supported by the official PostgreSQL Docker image are 
 | POSTGRES_ODOO_PASSWORD | The password for odoo user | Yes | "" |
 | POSTGRES_ODOO_DB | The database for odoo user | No | "" |
 
+** Can use `POSTGRES_ODOO_PASSWORD_FILE` to set the password using the contents of a file.
+
 ### Points Of Interest
 
 | Path | Description |
@@ -159,7 +161,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_ODOO_USER: odoo
-      POSTGRES_ODOO_PASSWORD: odoo
+      POSTGRES_ODOO_PASSWORD_FILE: /run/secrets/odoo_db_password
       POSTGRES_ODOO_DB: odoodb
       POSTGRES_INITDB_ARGS: --locale=C --encoding=UTF8
     volumes:
@@ -171,6 +173,7 @@ services:
       - db:/var/lib/postgresql
     secrets:
       - restic_password
+      - odoo_db_password
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     hostname: odoo-db
     healthcheck:
@@ -187,11 +190,13 @@ services:
         condition: service_healthy
     ports:
       - '127.0.0.1:8069:8069'
+    secrets:
+      - odoo_db_password
     environment:
       OCONF__options__log_level: debug
       OCONF__options__db_filter: odoodb$
       OCONF__options__db_user: odoo
-      OCONF__options__db_password: odoo
+      FOCONF__options__db_password: /run/secrets/odoo_db_password
       OCONF__options__db_host: odoo-db
       OCONF__options__db_name: odoodb
       OCONF__options__proxy_mode: false
@@ -207,6 +212,9 @@ secrets:
   restic_password:
     x-podman.relabel: Z
     file: ./secrets/restic_password.txt
+  odoo_db_password:
+    x-podman.relabel: Z
+    file: ./secrets/odoo_db_password.txt
 
 volumes:
   filestore:
