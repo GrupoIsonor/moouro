@@ -20,7 +20,7 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/lib/postgresql/vector.so /usr/local/lib/postgresql/vector.so
 COPY --from=pgvector-builder --chown=postgres:postgres /usr/local/share/postgresql/extension /usr/local/share/postgresql/extension
 
-RUN apk add --no-cache pgbackrest restic rclone python3 apprise && \
+RUN apk add --no-cache pgbackrest restic rclone python3 apprise tzdata musl-locales && \
     apk add --no-cache --virtual .build-deps curl && \
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
     apk del .build-deps && \

@@ -2,7 +2,7 @@ FROM docker.io/library/postgres:12-alpine AS runtime
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add --no-cache pgbackrest restic rclone python3 apprise && \
+RUN apk add --no-cache pgbackrest restic rclone python3 apprise tzdata musl-locales && \
     apk add --no-cache --virtual .build-deps curl && \
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
     apk del .build-deps && \
