@@ -1,15 +1,17 @@
 <h1 align="center">
   <img src="moouro.png" />
-  <div>Moouro - Docker Image</div>
+  <div>Moouro - Container Image</div>
 
   [![Tests](https://github.com/GrupoIsonor/moouro/actions/workflows/moouro.yml/badge.svg)](https://github.com/GrupoIsonor/moouro/actions/workflows/moouro.yml)
 </h1>
 
 <p align="center">
 *** PROJECT UNDER DEVELOPMENT. NOT READY FOR PRODUCTION ***
-<p align="center">
+
 Database and Filestore Management for Odoo environments
-(By Grupo Isonor)
+</p>
+<p align="center">
+  -- <a href="https://www.grupoisonor.es/">Grupo Isonor</a> --
 </p>
 
 ---
@@ -141,9 +143,9 @@ It is highly recommend that you learn how to use pgBackRest and ResticProfile by
 ### Folder Tree
 ```
 myproject/
-  - docker-compose.yaml
+  - compose.yaml
   - secrets/
-    - restic_password.txt
+    - backup_password.txt
   - config/
     - apprise.yaml
     - pgbackrest.conf
@@ -151,7 +153,7 @@ myproject/
     - resticprofile.yaml
 ```
 
-### docker-compose.yaml
+### compose.yaml
 ```yml
 services:
   db:
@@ -159,7 +161,7 @@ services:
     environment:
       POSTGRES_DB: odoodb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_db_password
       POSTGRES_ODOO_USER: odoo
       POSTGRES_ODOO_PASSWORD_FILE: /run/secrets/odoo_db_password
       POSTGRES_ODOO_DB: odoodb
@@ -172,7 +174,8 @@ services:
       - filestore:/var/lib/odoo/data
       - db:/var/lib/postgresql
     secrets:
-      - restic_password
+      - backup_password
+      - postgres_db_password
       - odoo_db_password
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     hostname: odoo-db
@@ -209,9 +212,12 @@ services:
 
 
 secrets:
-  restic_password:
+  backup_password:
     x-podman.relabel: Z
-    file: ./secrets/restic_password.txt
+    file: ./secrets/backup_password.txt
+  postgres_db_password:
+    x-podman.relabel: Z
+    file: ./secrets/postgres_db_password.txt
   odoo_db_password:
     x-podman.relabel: Z
     file: ./secrets/odoo_db_password.txt

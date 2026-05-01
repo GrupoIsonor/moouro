@@ -201,7 +201,7 @@ def docker_env(env_info):
         else "/var/lib/postgresql/data"
     )
     os.environ["PYTEST_PG_DATA_VOLUME"] = (
-        f"/var/lib/postgresql" if float(pg_ver) >= 18 else "/var/lib/postgresql/data"
+        "/var/lib/postgresql" if float(pg_ver) >= 18 else "/var/lib/postgresql/data"
     )
     os.environ["PYTEST_PG_CONFIG"] = PG_CONFIGS[pg_ver]
     client_type = env_info["client_type"]
@@ -239,7 +239,7 @@ def docker_env(env_info):
     if client_type == "podman":
         _podman_build(
             ".",
-            file=f"./Dockerfile",
+            file="./Dockerfile",
             tags=f"{IMAGE_TAG_NAME}-odoo-{pg_ver}",
             cache=not env_info["options"]["no_cache"],
             build_args={
@@ -256,7 +256,7 @@ def docker_env(env_info):
         docker = DockerClient(client_call=client_call, client_type=client_type)
         docker.build(
             ".",
-            file=f"./Dockerfile",
+            file="./Dockerfile",
             tags=f"{IMAGE_TAG_NAME}-odoo-{pg_ver}",
             cache=not env_info["options"]["no_cache"],
             build_args={
@@ -271,7 +271,7 @@ def docker_env(env_info):
     docker = DockerClient(
         client_call=client_call,
         client_type=client_type,
-        compose_files=["docker-compose.yaml"],
+        compose_files=["compose.yml"],
         compose_project_name=COMPOSE_PROJECT_NAME,
     )
 
