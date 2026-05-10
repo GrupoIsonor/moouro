@@ -25,7 +25,7 @@ RUN apk add --no-cache pgbackrest restic rclone python3 apprise tzdata musl-loca
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
     apk del .build-deps && \
     rm -f /sbin/apk && \
-    rm -rf /etc/apk /lib/apk /usr/share/apk /var/cache/apk /var/lib/apk
+    rm -rf /etc/apk /lib/apk /usr/share/apk /var/cache/apk /var/lib/apk /etc/pgbackrest
 
 COPY --chown=postgres:postgres moouro-entrypoint.sh /usr/local/bin/moouro-entrypoint
 COPY --chown=postgres:postgres files/init/common/* /docker-entrypoint-initdb.d/
