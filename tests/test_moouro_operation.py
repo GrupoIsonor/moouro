@@ -115,10 +115,31 @@ class TestMoouroOperation:
         assert "pg_basebackup done" in output
         project_compose_up(env_info["client_type"], docker_env, services=["db-replica"])
         time.sleep(3)
-        output = exec_docker_db(["psql", "-U", "postgres", "-d", "postgres", "-t", "-c", "SELECT pg_is_in_recovery();"], replica=True)
+        output = exec_docker_db(
+            [
+                "psql",
+                "-U",
+                "postgres",
+                "-d",
+                "postgres",
+                "-t",
+                "-c",
+                "SELECT pg_is_in_recovery();",
+            ],
+            replica=True,
+        )
         assert output.strip() == "t"
         count = exec_docker_db(
-            ["psql", "-U", "postgres", "-d", "odoodb", "-t", "-c", "SELECT COUNT(*) FROM ir_module_module;"],
-            replica=True
+            [
+                "psql",
+                "-U",
+                "postgres",
+                "-d",
+                "odoodb",
+                "-t",
+                "-c",
+                "SELECT COUNT(*) FROM ir_module_module;",
+            ],
+            replica=True,
         )
         assert int(count.strip()) > 0

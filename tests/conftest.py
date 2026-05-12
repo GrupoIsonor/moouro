@@ -149,7 +149,14 @@ def wait_for_odoo(ip_address, port):
 
 def project_compose_up(client_type, docker, services=None):
     if client_type == "podman":
-        cmd = ["podman", "compose", "-p", COMPOSE_PROJECT_NAME, "up", "--remove-orphans"]
+        cmd = [
+            "podman",
+            "compose",
+            "-p",
+            COMPOSE_PROJECT_NAME,
+            "up",
+            "--remove-orphans",
+        ]
         if services:
             cmd += services
         subprocess.Popen(
@@ -163,6 +170,7 @@ def project_compose_up(client_type, docker, services=None):
             remove_orphans=True,
             services=services,
         )
+
 
 def pytest_addoption(parser):
     parser.addoption("--no-cache", action="store_true", default=False)
