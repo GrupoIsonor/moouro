@@ -21,6 +21,7 @@ Database and Filestore Management for Odoo environments
 - unaccent PostgreSQL extension
 - vector (13+) PostgreSQL extension
 - Point-in-Time Recovery (PITR)
+- Replica-Ready (streaming)
 - No Package Manager
 - [pgBackRest](https://pgbackrest.org/) – PostgreSQL backups
 - [restic](https://github.com/restic/restic) – Filestore backups
@@ -60,8 +61,20 @@ All environment variables supported by the official PostgreSQL Docker image are 
 | POSTGRES_ODOO_USER | The username for odoo user | Yes | "" |
 | POSTGRES_ODOO_PASSWORD | The password for odoo user | Yes | "" |
 | POSTGRES_ODOO_DB | The database for odoo user | No | "" |
+| POSTGRES_REPLICATOR_USER | The name for the 'replicator' role | No | replicator |
+| POSTGRES_REPLICATOR_PASSWORD | The password for 'replicator' role. If it is not specified, the role will not be created. | No | "" |
 
 ** Can use `POSTGRES_ODOO_PASSWORD_FILE` to set the password using the contents of a file.
+
+### Environment Variables (Replication Mode)
+
+| Name | Description | Required | Default |
+| ---- | ----------- | -------- | ------- |
+| POSTGRES_REPLICATION | Enables replication | No | false |
+| POSTGRES_MASTER_HOST | The master host | No | "" |
+| POSTGRES_MASTER_PORT | The master host port | No | "" |
+| POSTGRES_MASTER_REPLICATOR_USER | The name for the master 'replicator' role | No | replicator |
+| POSTGRES_MASTER_REPLICATOR_PASSWORD_FILE | The password for master 'replicator' role | No | "" |
 
 ### Points Of Interest
 
@@ -79,7 +92,7 @@ It is highly recommend that you learn how to use pgBackRest and ResticProfile by
 
 - `moouro_backup` – Execute pgBackRest and Restic backups
 
-  Syntaxis: `moouro_backup <full|incr> [dry-run] [--notify]`
+  Syntax: `moouro_backup <full|incr> [dry-run] [--notify]`
 
   Examples:
   ```sh
@@ -92,7 +105,7 @@ It is highly recommend that you learn how to use pgBackRest and ResticProfile by
 
 - `moouro_restore` – Restore pgBackRest and Restic backups.
 
-  Syntaxis: `moouro_restore <destination> <pgBackrest_date|latest> <restic_snapshot_id|latest> [dry-run]`
+  Syntax: `moouro_restore <destination> <pgBackrest_date|latest> <restic_snapshot_id|latest> [dry-run]`
 
   WARNING: This restore script is very aggressive. It will overwrite all data and discard any unwritten changes available in the WAL.
 
@@ -105,7 +118,7 @@ It is highly recommend that you learn how to use pgBackRest and ResticProfile by
 
 - `moouro_check` – Run pgBackRest and Restic checks
 
-  Syntaxis: `moouro_check [--notify]`
+  Syntax: `moouro_check [--notify]`
 
   Example:
   ```sh
@@ -115,11 +128,20 @@ It is highly recommend that you learn how to use pgBackRest and ResticProfile by
 
 - `moouro_list` – List available restore points
 
-  Syntaxis: `moouro_list`
+  Syntax: `moouro_list`
 
   Example:
   ```sh
     moouro_list
+  ```
+
+- `moouro_init_replica` – Launch pg_basebackup to start the replica. It should be called only once, when the database is empty.
+
+  Syntax: `moouro_init_replica`
+
+  Example:
+  ```sh
+    moouro_init_replica
   ```
 
 ### FAQ

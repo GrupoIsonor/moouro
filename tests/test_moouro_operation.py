@@ -1,6 +1,6 @@
 # Copyright  Alexandre Díaz <dev@redneboa.es>
 import xmlrpc.client as xmlrpclib
-import base64
+import time
 import re
 import json
 from conftest import project_compose_up, wait_for_odoo
@@ -107,3 +107,18 @@ class TestMoouroOperation:
         )
         assert result[0]["name"] == "Partner B"
         assert not result[0][image_field]
+
+    def test_replica(
+        self, docker_env, env_info, exec_docker_db, run_docker_db_no_entrypoint
+    ):
+        output = run_docker_db_no_entrypoint(["moouro_init_replica"], replica=True)
+        assert "pg_basebackup done" in output
+        project_compose_up(env_info["client_type"], docker_env, services=["db-replica"])
+        time.sleep(3)
+        output = exec_docker_db(["psql", "-U", "postgres", "-d", "postgres", "-t", "-c", "SELECT pg_is_in_recovery();"], replica=True)
+        assert output.strip() == "t"
+        count = exec_docker_db(
+            ["psql", "-U", "postgres", "-d", "odoodb", "-t", "-c", "SELECT COUNT(*) FROM ir_module_module;"],
+            replica=True
+        )
+        assert int(count.strip()) > 0

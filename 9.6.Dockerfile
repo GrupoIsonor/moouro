@@ -16,11 +16,12 @@ COPY --chown=postgres:postgres tools/moouro_backup.py /usr/local/sbin/moouro_bac
 COPY --chown=postgres:postgres tools/moouro_restore.py /usr/local/sbin/moouro_restore
 COPY --chown=postgres:postgres tools/moouro_check.py /usr/local/sbin/moouro_check
 COPY --chown=postgres:postgres tools/moouro_list.py /usr/local/sbin/moouro_list
+COPY --chown=postgres:postgres tools/moouro_init_replica.sh /usr/local/sbin/moouro_init_replica
 
 RUN mkdir -p /var/log/pgbackrest && \
     chown postgres:postgres /var/log/pgbackrest && \
     chmod 750 /usr/local/sbin/moouro_* && \
-    chmod +x /usr/local/bin/moouro-entrypoint
+    chmod +x /usr/local/bin/moouro-entrypoint /usr/local/sbin/moouro_init_replica
 
 # Smoke Tests
 RUN pgbackrest version && restic version && resticprofile version && rclone version && apprise --version

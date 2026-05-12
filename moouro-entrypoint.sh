@@ -18,7 +18,7 @@ fi
 # Init pgbackrest (background)
 if [ -f /etc/pgbackrest/pgbackrest.conf ]; then
     (
-        until pg_isready -q -p 5432 -U ${POSTGRES_USER:-postgres}; do
+        until pg_isready -q -p 5432; do
             sleep 1
         done
 

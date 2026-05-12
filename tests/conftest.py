@@ -147,10 +147,13 @@ def wait_for_odoo(ip_address, port):
     time.sleep(5)  # Wait for pgBackRest and resticprofile
 
 
-def project_compose_up(client_type, docker):
+def project_compose_up(client_type, docker, services=None):
     if client_type == "podman":
+        cmd = ["podman", "compose", "-p", COMPOSE_PROJECT_NAME, "up", "--remove-orphans"]
+        if services:
+            cmd += services
         subprocess.Popen(
-            ["podman", "compose", "-p", COMPOSE_PROJECT_NAME, "up", "--remove-orphans"],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -158,8 +161,8 @@ def project_compose_up(client_type, docker):
         docker.compose.up(
             detach=True,
             remove_orphans=True,
+            services=services,
         )
-
 
 def pytest_addoption(parser):
     parser.addoption("--no-cache", action="store_true", default=False)
@@ -319,14 +322,16 @@ def docker_env(env_info):
         print("===== DB LOGS")
         print(docker.compose.logs("db"))
         docker.compose.down(remove_orphans=True, volumes=True)
+        docker.compose.down(remove_orphans=True, volumes=True, services=["db-replica"])
 
 
 @pytest.fixture(scope="session")
 def exec_docker_db(env_info):
-    def _run(args: list[str], stdin=None) -> str:
+    def _run(args: list[str], stdin=None, replica=False) -> str:
         client_type = env_info["client_type"]
+        service = "db-replica" if replica else "db"
         return _compose_raw(
-            client_type, ["exec", "-u", "postgres", "db"] + args, stdin=stdin
+            client_type, ["exec", "-u", "postgres", service] + args, stdin=stdin
         )
 
     return _run
@@ -334,10 +339,11 @@ def exec_docker_db(env_info):
 
 @pytest.fixture(scope="session")
 def run_docker_db(env_info):
-    def _run(args: list[str], stdin=None):
+    def _run(args: list[str], stdin=None, replica=False):
         client_type = env_info["client_type"]
+        service = "db-replica" if replica else "db"
         return _compose_raw(
-            client_type, ["run", "--rm", "-u", "postgres", "db"] + args, stdin=stdin
+            client_type, ["run", "--rm", "-u", "postgres", service] + args, stdin=stdin
         )
 
     return _run
@@ -345,9 +351,10 @@ def run_docker_db(env_info):
 
 @pytest.fixture(scope="session")
 def run_docker_db_no_entrypoint(env_info):
-    def _run(args: list[str], stdin=None):
+    def _run(args: list[str], stdin=None, replica=False):
         args_str = " ".join(args)
         client_type = env_info["client_type"]
+        service = "db-replica" if replica else "db"
         return _compose_raw(
             client_type,
             [
@@ -357,7 +364,7 @@ def run_docker_db_no_entrypoint(env_info):
                 "/bin/sh",
                 "-u",
                 "postgres",
-                "db",
+                service,
                 "-c",
                 args_str,
             ],
