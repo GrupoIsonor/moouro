@@ -22,7 +22,6 @@ Database and Filestore Management for Odoo environments
 - vector (13+) PostgreSQL extension
 - Point-in-Time Recovery (PITR)
 - Replica-Ready (streaming)
-- No Package Manager
 - [pgBackRest](https://pgbackrest.org/) – PostgreSQL backups
 - [restic](https://github.com/restic/restic) – Filestore backups
 - [resticprofile](https://github.com/creativeprojects/resticprofile) – Restic profile management

@@ -28,4 +28,8 @@ if [ -f /etc/pgbackrest/pgbackrest.conf ]; then
 fi
 
 echo "[moouro] Init PostgreSQL..."
-exec docker-entrypoint.sh "$@"
+if [ "${POSTGRES_BYPASS_ENTRYPOINT}" = "true" ]; then
+    exec "$@"
+else
+    exec docker-entrypoint.sh "$@"
+fi
