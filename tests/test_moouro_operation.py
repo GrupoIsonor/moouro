@@ -114,7 +114,7 @@ class TestMoouroOperation:
         output = run_docker_db_no_entrypoint(["moouro_init_replica"], replica=True)
         assert "pg_basebackup done" in output
         project_compose_up(env_info["client_type"], docker_env, services=["db-replica"])
-        time.sleep(20) # FIXME: Waiting 20 seconds came to me in a dream
+        time.sleep(20)  # FIXME: Waiting 20 seconds came to me in a dream
         output = exec_docker_db(
             [
                 "psql",
