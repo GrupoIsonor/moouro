@@ -329,6 +329,8 @@ def docker_env(env_info):
     finally:
         print("===== DB LOGS")
         print(docker.compose.logs("db"))
+        print("===== DB RELPICA LOGS")
+        print(docker.compose.logs("db-replica"))
         docker.compose.down(remove_orphans=True, volumes=True)
         docker.compose.down(remove_orphans=True, volumes=True, services=["db-replica"])
 
