@@ -1,0 +1,51 @@
+scope: moouro
+name: patroni2
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: patroni2:8008
+
+etcd3:
+  hosts: etcd:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: false
+      parameters:
+        wal_level: replica
+        hot_standby: on
+        max_wal_senders: 5
+        max_replication_slots: 5
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+  pg_hba:
+    - local all all trust
+    - host replication replicator 0.0.0.0/0 trust
+    - host all all 0.0.0.0/0 trust
+  users:
+    replicator:
+      options:
+        - replication
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: patroni2:5432
+  data_dir: /var/lib/postgresql/data
+  pgpass: /tmp/pgpass0
+  authentication:
+    replication:
+      username: replicator
+    superuser:
+      username: postgres
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false

@@ -1,0 +1,54 @@
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.21
+    hostname: etcd
+    environment:
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_NAME: etcd-node
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
+      ETCD_INITIAL_CLUSTER: "etcd-node=http://etcd:2380"
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: moouro-test
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - etcd-data:/etcd-data
+
+  patroni1:
+    image: ${PYTEST_PATRONI_IMAGE:-localhost/test:docker-moouro-patroni-18}
+    pull_policy: never
+    hostname: patroni1
+    depends_on:
+      etcd:
+        condition: service_healthy
+    volumes:
+      - ./config/patroni1.yaml:/etc/patroni/config.yml:ro,Z
+      - patroni1-data:/var/lib/postgresql
+    ports:
+      - '127.0.0.1:5434:5432'
+      - '127.0.0.1:8008:8008'
+
+  patroni2:
+    image: ${PYTEST_PATRONI_IMAGE:-localhost/test:docker-moouro-patroni-18}
+    pull_policy: never
+    hostname: patroni2
+    depends_on:
+      etcd:
+        condition: service_healthy
+    volumes:
+      - ./config/patroni2.yaml:/etc/patroni/config.yml:ro,Z
+      - patroni2-data:/var/lib/postgresql
+    ports:
+      - '127.0.0.1:8009:8008'
+
+volumes:
+  etcd-data:
+  patroni1-data:
+  patroni2-data:

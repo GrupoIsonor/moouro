@@ -2,7 +2,7 @@ FROM docker.io/library/postgres:18-alpine AS pgvector-builder
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add --no-cache git build-base clang19 llvm19 llvm19-linker-tools llvm19-dev
+RUN apk add --no-cache git build-base clang21 llvm21 llvm21-linker-tools llvm21-dev
 
 WORKDIR /tmp
 
@@ -42,21 +42,23 @@ RUN mkdir -p /var/log/pgbackrest && \
 # Smoke Tests
 RUN pgbackrest version && restic version && resticprofile version && rclone version && apprise --version
 
-
 ENTRYPOINT ["/usr/local/bin/moouro-entrypoint"]
 CMD ["postgres"]
 
-# FROM runtime AS runtime-patroni-etcd3
 
-# WORKDIR /opt/patroni
+FROM runtime AS runtime-patroni-etcd3
 
-# RUN apk add --no-cache py3-pip && \
-#     apk add --no-cache --virtual .build-deps build-base linux-headers python3-dev && \
-#     python3 -m venv . && \
-#     ./bin/pip install --no-cache-dir patroni[psycopg3,etcd3] && \
-#     apk del .build-deps
+WORKDIR /opt/patroni
 
-# ENV PATH="/opt/patroni/bin:$PATH" \
-#     POSTGRES_BYPASS_ENTRYPOINT=true
+RUN apk add --no-cache --virtual .build-deps py3-pip build-base linux-headers python3-dev && \
+    python3 -m venv . && \
+    ./bin/pip install --no-cache-dir "patroni[psycopg3,etcd3]" && \
+    apk del .build-deps
 
-# CMD ["patroni"]
+# Smoke test
+RUN /opt/patroni/bin/patroni --version
+
+ENV PATH="/opt/patroni/bin:$PATH"
+
+ENTRYPOINT ["gosu", "postgres"]
+CMD ["patroni", "/etc/patroni/config.yml"]

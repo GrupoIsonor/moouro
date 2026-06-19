@@ -3,7 +3,7 @@ import xmlrpc.client as xmlrpclib
 import time
 import re
 import json
-from conftest import project_compose_up, wait_for_odoo
+from conftest import project_compose_up, wait_for_odoo, wait_for_patroni_leader
 
 
 class TestMoouroOperation:
@@ -153,3 +153,72 @@ class TestMoouroOperation:
             replica=True,
         )
         assert int(count.strip()) > 0
+
+
+class TestPatroniOperation:
+    def test_patroni_leader_elected(self, patroni_env, exec_patroni):
+        output = exec_patroni(
+            "patroni1",
+            ["patronictl", "-c", "/etc/patroni/config.yml", "list"],
+        )
+        assert "Leader" in output
+
+    def test_patroni_write_read_failover(self, patroni_env, exec_patroni):
+        ip = patroni_env["ip"]
+        api_ports = patroni_env["api_ports"]
+        leader_api_port = patroni_env["leader_api_port"]
+
+        leader_node = "patroni1" if leader_api_port == api_ports["patroni1"] else "patroni2"
+        follower_node = "patroni2" if leader_node == "patroni1" else "patroni1"
+
+        # Write a row on the current leader
+        out = exec_patroni(
+            leader_node,
+            [
+                "psql",
+                "-U",
+                "postgres",
+                "-c",
+                (
+                    "CREATE TABLE IF NOT EXISTS patroni_test (id SERIAL, value TEXT);"
+                    " INSERT INTO patroni_test (value) VALUES ('before_failover');"
+                ),
+            ],
+        )
+        assert "INSERT" in out
+
+        # Trigger a manual failover to the other node
+        exec_patroni(
+            leader_node,
+            [
+                "patronictl",
+                "-c",
+                "/etc/patroni/config.yml",
+                "failover",
+                "moouro",
+                "--primary",
+                leader_node,
+                "--candidate",
+                follower_node,
+                "--force",
+            ],
+        )
+
+        # Wait for the promoted node to become leader
+        new_leader_api_port = wait_for_patroni_leader(ip, timeout=90)
+        new_leader_node = (
+            "patroni1" if new_leader_api_port == api_ports["patroni1"] else "patroni2"
+        )
+
+        # Verify data survived the failover
+        out = exec_patroni(
+            new_leader_node,
+            [
+                "psql",
+                "-U",
+                "postgres",
+                "-c",
+                "SELECT value FROM patroni_test WHERE value = 'before_failover';",
+            ],
+        )
+        assert "before_failover" in out

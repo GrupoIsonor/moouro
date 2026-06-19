@@ -2,7 +2,7 @@ FROM docker.io/library/postgres:14-alpine AS pgvector-builder
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add --no-cache git build-base clang19 llvm19 llvm19-linker-tools llvm19-dev
+RUN apk add --no-cache git build-base clang21 llvm21 llvm21-linker-tools llvm21-dev
 
 WORKDIR /tmp
 

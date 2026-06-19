@@ -7,8 +7,12 @@ import subprocess
 from pathlib import Path
 from python_on_whales import DockerClient
 
+REPO_ROOT = Path(__file__).parent.parent.resolve()
+PROJECT_DEMO = Path(__file__).parent / "data" / "project_demo"
+
 IMAGE_TAG_NAME = "localhost/test:docker-moouro"
 COMPOSE_PROJECT_NAME = "moouro-test"
+PATRONI_COMPOSE_PROJECT_NAME = "moouro-test-patroni"
 ODOO_VERSIONS = {
     "9.6": "8.0",
     "10": "13.0",
@@ -234,6 +238,7 @@ def docker_env(env_info):
             file=dockerfile,
             tags=f"{IMAGE_TAG_NAME}-{pg_ver}",
             cache=not env_info["options"]["no_cache"],
+            extra_args=["--target", "runtime"],
         )
     else:
         docker = DockerClient(client_call=client_call, client_type=client_type)
@@ -242,6 +247,7 @@ def docker_env(env_info):
             file=dockerfile,
             tags=f"{IMAGE_TAG_NAME}-{pg_ver}",
             cache=not env_info["options"]["no_cache"],
+            target="runtime",
         )
 
     os.chdir("./tests/data/project_demo")
@@ -379,6 +385,138 @@ def run_docker_db_no_entrypoint(env_info):
                 args_str,
             ],
             stdin=stdin,
+        )
+
+    return _run
+
+
+# ---------------------------------------------------------------------------
+# Patroni helpers
+# ---------------------------------------------------------------------------
+
+def _compose_patroni_raw(client_type: str, command: list[str], stdin: str = None) -> str:
+    compose_file = str(PROJECT_DEMO / "compose.patroni.yaml")
+    cmd = [client_type, "compose", "-p", PATRONI_COMPOSE_PROJECT_NAME, "-f", compose_file]
+    cmd.extend(command)
+    result = subprocess.run(
+        cmd,
+        input=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        cwd=str(PROJECT_DEMO),
+        check=False,
+    )
+    clean_lines = [
+        line
+        for line in result.stdout.splitlines(keepends=True)
+        if "The input device is not a TTY" not in line
+    ]
+    return "".join(clean_lines)
+
+
+def wait_for_patroni_leader(ip: str, api_ports=(8008, 8009), timeout: int = 120) -> int:
+    import requests
+    from requests.exceptions import RequestException
+
+    for _ in range(timeout // 2):
+        for port in api_ports:
+            try:
+                r = requests.get(f"http://{ip}:{port}/leader", timeout=3)
+                if r.status_code == 200:
+                    return port
+            except RequestException:
+                pass
+        time.sleep(2)
+    raise TimeoutError("No Patroni leader elected in time")
+
+
+@pytest.fixture(scope="session")
+def patroni_env(env_info):
+    if env_info["options"]["pg_version"] != "18":
+        pytest.skip("Patroni tests only run for PostgreSQL 18")
+
+    client_type = env_info["client_type"]
+    patroni_tag = f"{IMAGE_TAG_NAME}-patroni-18"
+
+    if client_type == "podman":
+        os.environ["PODMAN_COMPOSE_PROVIDER"] = "/usr/bin/podman-compose"
+        os.environ["PODMAN_COMPOSE_WARNING_LOGS"] = "false"
+        _podman_build(
+            str(REPO_ROOT),
+            file=str(REPO_ROOT / "18.Dockerfile"),
+            tags=patroni_tag,
+            cache=not env_info["options"]["no_cache"],
+            extra_args=["--target", "runtime-patroni-etcd3"],
+        )
+    else:
+        docker = DockerClient(client_call=[client_type], client_type=client_type)
+        docker.build(
+            str(REPO_ROOT),
+            file=str(REPO_ROOT / "18.Dockerfile"),
+            tags=patroni_tag,
+            cache=not env_info["options"]["no_cache"],
+            target="runtime-patroni-etcd3",
+        )
+
+    os.environ["PYTEST_PATRONI_IMAGE"] = patroni_tag
+
+    try:
+        subprocess.run(
+            [
+                client_type,
+                "compose",
+                "-p",
+                PATRONI_COMPOSE_PROJECT_NAME,
+                "-f",
+                str(PROJECT_DEMO / "compose.patroni.yaml"),
+                "up",
+                "-d",
+                "--remove-orphans",
+            ],
+            cwd=str(PROJECT_DEMO),
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        leader_api_port = wait_for_patroni_leader(env_info["ip"])
+
+        yield {
+            "ip": env_info["ip"],
+            "leader_api_port": leader_api_port,
+            "api_ports": {"patroni1": 8008, "patroni2": 8009},
+        }
+    finally:
+        print("===== PATRONI LOGS")
+        print(_compose_patroni_raw(client_type, ["logs"]))
+        subprocess.run(
+            [
+                client_type,
+                "compose",
+                "-p",
+                PATRONI_COMPOSE_PROJECT_NAME,
+                "-f",
+                str(PROJECT_DEMO / "compose.patroni.yaml"),
+                "down",
+                "--remove-orphans",
+                "--volumes",
+            ],
+            cwd=str(PROJECT_DEMO),
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+
+@pytest.fixture(scope="session")
+def exec_patroni(env_info):
+    def _run(node: str, args: list[str], stdin: str = None) -> str:
+        client_type = env_info["client_type"]
+        return _compose_patroni_raw(
+            client_type, ["exec", "-u", "postgres", node] + args, stdin=stdin
         )
 
     return _run

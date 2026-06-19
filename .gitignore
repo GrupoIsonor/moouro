@@ -2,3 +2,7 @@ __pycache__/
 /.pytest_cache
 /.venv
 tests/data/project_demo/config/pgbackrest.conf
+
+CLAUDE.md
+.claude/
+AGENTS.md
