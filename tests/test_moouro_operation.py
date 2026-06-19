@@ -111,9 +111,17 @@ class TestMoouroOperation:
     def test_replica(
         self, docker_env, env_info, exec_docker_db, run_docker_db_no_entrypoint
     ):
+        # Stop any running db-replica container so pg_basebackup writes to a clean $PGDATA
+        docker_env.compose.stop(["db-replica"])
         output = run_docker_db_no_entrypoint(["moouro_init_replica"], replica=True)
         assert "pg_basebackup done" in output
-        project_compose_up(env_info["client_type"], docker_env, services=["db-replica"])
+        # force_recreate ensures the container picks up the new pg_basebackup data
+        project_compose_up(
+            env_info["client_type"],
+            docker_env,
+            services=["db-replica"],
+            force_recreate=True,
+        )
         timeout = 500  # Free runners can be very slow
         start_time = time.time()
         in_recovery = False
@@ -132,7 +140,7 @@ class TestMoouroOperation:
                     ],
                     replica=True,
                 )
-                if output.strip() == "t":
+                if output.strip().split()[-1:] == ["t"]:
                     in_recovery = True
                     break
             except Exception:
@@ -168,7 +176,9 @@ class TestPatroniOperation:
         api_ports = patroni_env["api_ports"]
         leader_api_port = patroni_env["leader_api_port"]
 
-        leader_node = "patroni1" if leader_api_port == api_ports["patroni1"] else "patroni2"
+        leader_node = (
+            "patroni1" if leader_api_port == api_ports["patroni1"] else "patroni2"
+        )
         follower_node = "patroni2" if leader_node == "patroni1" else "patroni1"
 
         # Write a row on the current leader
@@ -205,7 +215,7 @@ class TestPatroniOperation:
         )
 
         # Wait for the promoted node to become leader
-        new_leader_api_port = wait_for_patroni_leader(ip, timeout=90)
+        new_leader_api_port = wait_for_patroni_leader(ip, timeout=150)
         new_leader_node = (
             "patroni1" if new_leader_api_port == api_ports["patroni1"] else "patroni2"
         )

@@ -25,5 +25,10 @@ if [ "$POSTGRES_REPLICATION" = "true" ]; then
             -D "$PGDATA" \
             -Fp -Xs -R -v --wal-method=stream
     fi
+    # Strip recovery_target* from primary's postgresql.auto.conf to prevent immediate replica promotion.
+    if [ -f "$PGDATA/postgresql.auto.conf" ]; then
+        grep -v '^recovery_target' "$PGDATA/postgresql.auto.conf" > /tmp/pg_auto.conf || true
+        mv /tmp/pg_auto.conf "$PGDATA/postgresql.auto.conf"
+    fi
     echo "pg_basebackup done"
 fi

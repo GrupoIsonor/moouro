@@ -50,7 +50,8 @@ FROM runtime AS runtime-patroni-etcd3
 
 WORKDIR /opt/patroni
 
-RUN apk add --no-cache --virtual .build-deps py3-pip build-base linux-headers python3-dev && \
+RUN apk add --no-cache gosu && \
+    apk add --no-cache --virtual .build-deps py3-pip build-base linux-headers python3-dev && \
     python3 -m venv . && \
     ./bin/pip install --no-cache-dir "patroni[psycopg3,etcd3]" && \
     apk del .build-deps

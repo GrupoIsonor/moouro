@@ -7,8 +7,7 @@ RUN apk add --no-cache pgbackrest restic rclone python3 py3-pip tzdata musl-loca
     pip3 install --no-cache-dir apprise requests && \
     curl -sfL https://raw.githubusercontent.com/creativeprojects/resticprofile/master/install.sh | sh -s -- -b /usr/local/bin && \
     apk del .build-deps && \
-    rm -f /sbin/apk && \
-    rm -rf /etc/apk /lib/apk /usr/share/apk /var/cache/apk /var/lib/apk /etc/pgbackrest
+    rm -rf /etc/pgbackrest
 
 COPY --chown=postgres:postgres moouro-entrypoint.sh /usr/local/bin/moouro-entrypoint
 COPY --chown=postgres:postgres files/init/common/* /docker-entrypoint-initdb.d/
@@ -28,3 +27,22 @@ RUN pgbackrest version && restic version && resticprofile version && rclone vers
 
 ENTRYPOINT ["/usr/local/bin/moouro-entrypoint"]
 CMD ["postgres"]
+
+
+FROM runtime AS runtime-patroni-etcd3
+
+WORKDIR /opt/patroni
+
+RUN apk add --no-cache gosu && \
+    apk add --no-cache --virtual .build-deps py3-pip build-base linux-headers python3-dev && \
+    python3 -m venv . && \
+    ./bin/pip install --no-cache-dir "patroni[psycopg3,etcd3]" && \
+    apk del .build-deps
+
+# Smoke test
+RUN /opt/patroni/bin/patroni --version
+
+ENV PATH="/opt/patroni/bin:$PATH"
+
+ENTRYPOINT ["gosu", "postgres"]
+CMD ["patroni", "/etc/patroni/config.yml"]

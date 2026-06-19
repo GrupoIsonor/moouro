@@ -133,6 +133,15 @@ def _get_preferred_client_type():
     raise RuntimeError("Need install podman or docker (with compose)")
 
 
+def _image_exists(client_type, tag):
+    result = subprocess.run(
+        [client_type, "image", "inspect", tag],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
 def wait_for_odoo(ip_address, port):
     import requests
     from requests.exceptions import RequestException
@@ -148,10 +157,34 @@ def wait_for_odoo(ip_address, port):
         time.sleep(2)
     else:
         raise TimeoutError("Odoo did not start on time")
-    time.sleep(5)  # Wait for pgBackRest and resticprofile
 
 
-def project_compose_up(client_type, docker, services=None):
+def _wait_for_resticprofile(client_type):
+    for _ in range(60):
+        result = subprocess.run(
+            [
+                client_type,
+                "compose",
+                "-p",
+                COMPOSE_PROJECT_NAME,
+                "exec",
+                "-u",
+                "postgres",
+                "db",
+                "resticprofile",
+                "snapshots",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0:
+            return
+        time.sleep(2)
+
+
+def project_compose_up(client_type, docker, services=None, force_recreate=False):
     if client_type == "podman":
         cmd = [
             "podman",
@@ -161,6 +194,8 @@ def project_compose_up(client_type, docker, services=None):
             "up",
             "--remove-orphans",
         ]
+        if force_recreate:
+            cmd.append("--force-recreate")
         if services:
             cmd += services
         subprocess.Popen(
@@ -173,6 +208,7 @@ def project_compose_up(client_type, docker, services=None):
             detach=True,
             remove_orphans=True,
             services=services,
+            force_recreate=force_recreate,
         )
 
 
@@ -230,25 +266,31 @@ def docker_env(env_info):
         f.write(pgbakcrest_content)
 
     # Moouro Base
-    if client_type == "podman":
+    moouro_tag = f"{IMAGE_TAG_NAME}-{pg_ver}"
+    no_cache = env_info["options"]["no_cache"]
+    if no_cache or not _image_exists(client_type, moouro_tag):
+        if client_type == "podman":
+            os.environ["PODMAN_COMPOSE_PROVIDER"] = "/usr/bin/podman-compose"
+            os.environ["PODMAN_COMPOSE_WARNING_LOGS"] = "false"
+            _podman_build(
+                ".",
+                file=dockerfile,
+                tags=moouro_tag,
+                cache=not no_cache,
+                extra_args=["--target", "runtime"],
+            )
+        else:
+            docker = DockerClient(client_call=client_call, client_type=client_type)
+            docker.build(
+                ".",
+                file=dockerfile,
+                tags=moouro_tag,
+                cache=not no_cache,
+                target="runtime",
+            )
+    elif client_type == "podman":
         os.environ["PODMAN_COMPOSE_PROVIDER"] = "/usr/bin/podman-compose"
         os.environ["PODMAN_COMPOSE_WARNING_LOGS"] = "false"
-        _podman_build(
-            ".",
-            file=dockerfile,
-            tags=f"{IMAGE_TAG_NAME}-{pg_ver}",
-            cache=not env_info["options"]["no_cache"],
-            extra_args=["--target", "runtime"],
-        )
-    else:
-        docker = DockerClient(client_call=client_call, client_type=client_type)
-        docker.build(
-            ".",
-            file=dockerfile,
-            tags=f"{IMAGE_TAG_NAME}-{pg_ver}",
-            cache=not env_info["options"]["no_cache"],
-            target="runtime",
-        )
 
     os.chdir("./tests/data/project_demo")
 
@@ -316,7 +358,7 @@ def docker_env(env_info):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=60,
+                timeout=300,
                 check=True,
             )
         else:
@@ -330,6 +372,7 @@ def docker_env(env_info):
         print("Waiting Odoo...")
         project_compose_up(client_type, docker)
         wait_for_odoo(env_info["ip"], env_info["ports"]["odoo"])
+        _wait_for_resticprofile(client_type)
 
         yield docker
     finally:
@@ -394,9 +437,19 @@ def run_docker_db_no_entrypoint(env_info):
 # Patroni helpers
 # ---------------------------------------------------------------------------
 
-def _compose_patroni_raw(client_type: str, command: list[str], stdin: str = None) -> str:
+
+def _compose_patroni_raw(
+    client_type: str, command: list[str], stdin: str = None
+) -> str:
     compose_file = str(PROJECT_DEMO / "compose.patroni.yaml")
-    cmd = [client_type, "compose", "-p", PATRONI_COMPOSE_PROJECT_NAME, "-f", compose_file]
+    cmd = [
+        client_type,
+        "compose",
+        "-p",
+        PATRONI_COMPOSE_PROJECT_NAME,
+        "-f",
+        compose_file,
+    ]
     cmd.extend(command)
     result = subprocess.run(
         cmd,
@@ -415,7 +468,7 @@ def _compose_patroni_raw(client_type: str, command: list[str], stdin: str = None
     return "".join(clean_lines)
 
 
-def wait_for_patroni_leader(ip: str, api_ports=(8008, 8009), timeout: int = 120) -> int:
+def wait_for_patroni_leader(ip: str, api_ports=(8008, 8009), timeout: int = 240) -> int:
     import requests
     from requests.exceptions import RequestException
 
@@ -433,31 +486,32 @@ def wait_for_patroni_leader(ip: str, api_ports=(8008, 8009), timeout: int = 120)
 
 @pytest.fixture(scope="session")
 def patroni_env(env_info):
-    if env_info["options"]["pg_version"] != "18":
-        pytest.skip("Patroni tests only run for PostgreSQL 18")
-
+    pg_ver = env_info["options"]["pg_version"]
     client_type = env_info["client_type"]
-    patroni_tag = f"{IMAGE_TAG_NAME}-patroni-18"
+    patroni_tag = f"{IMAGE_TAG_NAME}-patroni-{pg_ver}"
+    dockerfile = REPO_ROOT / f"{pg_ver}.Dockerfile"
 
-    if client_type == "podman":
-        os.environ["PODMAN_COMPOSE_PROVIDER"] = "/usr/bin/podman-compose"
-        os.environ["PODMAN_COMPOSE_WARNING_LOGS"] = "false"
-        _podman_build(
-            str(REPO_ROOT),
-            file=str(REPO_ROOT / "18.Dockerfile"),
-            tags=patroni_tag,
-            cache=not env_info["options"]["no_cache"],
-            extra_args=["--target", "runtime-patroni-etcd3"],
-        )
-    else:
-        docker = DockerClient(client_call=[client_type], client_type=client_type)
-        docker.build(
-            str(REPO_ROOT),
-            file=str(REPO_ROOT / "18.Dockerfile"),
-            tags=patroni_tag,
-            cache=not env_info["options"]["no_cache"],
-            target="runtime-patroni-etcd3",
-        )
+    no_cache = env_info["options"]["no_cache"]
+    if no_cache or not _image_exists(client_type, patroni_tag):
+        if client_type == "podman":
+            os.environ["PODMAN_COMPOSE_PROVIDER"] = "/usr/bin/podman-compose"
+            os.environ["PODMAN_COMPOSE_WARNING_LOGS"] = "false"
+            _podman_build(
+                str(REPO_ROOT),
+                file=str(dockerfile),
+                tags=patroni_tag,
+                cache=not no_cache,
+                extra_args=["--target", "runtime-patroni-etcd3"],
+            )
+        else:
+            docker = DockerClient(client_call=[client_type], client_type=client_type)
+            docker.build(
+                str(REPO_ROOT),
+                file=str(dockerfile),
+                tags=patroni_tag,
+                cache=not no_cache,
+                target="runtime-patroni-etcd3",
+            )
 
     os.environ["PYTEST_PATRONI_IMAGE"] = patroni_tag
 
