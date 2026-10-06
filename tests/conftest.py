@@ -286,6 +286,7 @@ def docker_env(env_info):
                 file=dockerfile,
                 tags=moouro_tag,
                 cache=not no_cache,
+                load=True,
                 target="runtime",
             )
     elif client_type == "podman":
@@ -318,6 +319,7 @@ def docker_env(env_info):
             file="./Dockerfile",
             tags=f"{IMAGE_TAG_NAME}-odoo-{pg_ver}",
             cache=not env_info["options"]["no_cache"],
+            load=True,
             build_args={
                 "ODOO_VERSION": odoo_ver,
             },
@@ -510,6 +512,7 @@ def patroni_env(env_info):
                 file=str(dockerfile),
                 tags=patroni_tag,
                 cache=not no_cache,
+                load=True,
                 target="runtime-patroni-etcd3",
             )
 
