@@ -128,7 +128,13 @@ jobs:
     strategy:
       matrix:
         version: ["9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
+        target: [runtime, runtime-patroni-etcd3]
         platforms: ["linux/amd64,linux/arm64"]
+        include:
+          - target: runtime
+            suffix: ""
+          - target: runtime-patroni-etcd3
+            suffix: "-patroni-etcd3"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -139,8 +145,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ matrix.version }}
-            type=raw,value=latest,enable=${{ matrix.version == env.LATEST_VERSION }}
+            type=raw,value=${{ matrix.version }}${{ matrix.suffix }}
+            type=raw,value=latest${{ matrix.suffix }},enable=${{ matrix.version == env.LATEST_VERSION }}
           labels: |
             org.opencontainers.image.title=Moouro ${{ matrix.version }}
             org.opencontainers.image.description=Database and Filestore Management for Odoo environments
@@ -168,11 +174,12 @@ jobs:
         with:
           context: .
           file: ./${{ matrix.version }}.Dockerfile
+          target: ${{ matrix.target }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=moouro-${{ matrix.version }}
-          cache-to: type=gha,mode=max,scope=moouro-${{ matrix.version }}
+          cache-from: type=gha,scope=moouro-${{ matrix.version }}-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=moouro-${{ matrix.version }}-${{ matrix.target }}
           provenance: mode=max
           sbom: true
           platforms: ${{ matrix.platforms }}
