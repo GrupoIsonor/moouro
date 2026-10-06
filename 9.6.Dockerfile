@@ -33,7 +33,7 @@ FROM runtime AS runtime-patroni-etcd3
 
 WORKDIR /opt/patroni
 
-RUN apk add --no-cache gosu && \
+RUN apk add --no-cache su-exec && \
     apk add --no-cache --virtual .build-deps py3-pip build-base linux-headers python3-dev && \
     python3 -m venv . && \
     ./bin/pip install --no-cache-dir "patroni[psycopg3,etcd3]" && \
@@ -44,5 +44,5 @@ RUN /opt/patroni/bin/patroni --version
 
 ENV PATH="/opt/patroni/bin:$PATH"
 
-ENTRYPOINT ["gosu", "postgres"]
+ENTRYPOINT ["su-exec", "postgres"]
 CMD ["patroni", "/etc/patroni/config.yml"]
