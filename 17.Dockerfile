@@ -8,7 +8,7 @@ WORKDIR /tmp
 
 RUN git clone --branch v0.8.2 https://github.com/pgvector/pgvector.git && \
     cd pgvector && \
-    make && \
+    make OPTFLAGS="" && \
     make install
 
 

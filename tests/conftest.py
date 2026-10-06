@@ -184,6 +184,32 @@ def _wait_for_resticprofile(client_type):
         time.sleep(2)
 
 
+def _wait_for_pgbackrest(client_type):
+    for _ in range(60):
+        result = subprocess.run(
+            [
+                client_type,
+                "compose",
+                "-p",
+                COMPOSE_PROJECT_NAME,
+                "exec",
+                "-u",
+                "postgres",
+                "db",
+                "pgbackrest",
+                "--stanza=main",
+                "check",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            return
+        time.sleep(2)
+
+
 def project_compose_up(client_type, docker, services=None, force_recreate=False):
     if client_type == "podman":
         cmd = [
@@ -375,6 +401,7 @@ def docker_env(env_info):
         project_compose_up(client_type, docker)
         wait_for_odoo(env_info["ip"], env_info["ports"]["odoo"])
         _wait_for_resticprofile(client_type)
+        _wait_for_pgbackrest(client_type)
 
         yield docker
     finally:

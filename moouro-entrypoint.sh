@@ -23,7 +23,12 @@ if [ -f /etc/pgbackrest/pgbackrest.conf ]; then
         done
 
         echo "[moouro] Postgres ready. Init pgBackRest..."
-        $CMD_SU postgres pgbackrest --stanza=main stanza-create || echo "[!][moouro] Error: pgbackrest has failed, ignoring..."
+        # pg_isready can answer from the temporary initdb server, so retry until the real one is up
+        for _ in $(seq 1 30); do
+            $CMD_SU postgres pgbackrest --stanza=main stanza-create && exit 0
+            sleep 2
+        done
+        echo "[!][moouro] Error: pgbackrest has failed, ignoring..."
     ) &
 fi
 
